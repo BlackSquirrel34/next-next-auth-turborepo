@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,52 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Comment {
-  id        Int       @id @default(autoincrement())
-  text      String
-  createdAt DateTime? @default(now()) @db.Timestamp(6)
-  user_id   Int
-  user      User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comments_author_id_users_id_fk")
-  post_id   Int
-  post      Post      @relation(fields: [post_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comments_post_id_posts_id_fk")
+
+model comments {
+    id          Int        @id @default(autoincrement())
+    text        String
+    createdAt   DateTime? @default(now()) @db.Timestamp(6)
+    author_id   Int
+    post_id     Int
+    users       users   @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+    posts       posts   @relation(fields: [post_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}// skipped the mapping, as it seems this is not mandatory
+
+model groups {
+    id                  Int    @id @default(autoincrement())
+    name                String
+    users_to_groups     users_to_groups[]      
 }
 
-model Post {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now())
-  slug      String    @unique
-  title     String
-  desc      String
-  img       String?
-  views     Int       @default(0)
-  catSlug   String
-  cat       Category  @relation(fields: [catSlug], references: [slug])
-  userEmail String
-  user      User      @relation(fields: [userEmail], references: [email])
-  comments  Comment[]
+model posts {
+    id          Int         @id @default(autoincrement())
+    title       String
+    content     String
+    createdAt   DateTime?   @default(now()) @db.Timestamp(6)
+    author_id   Int
+    comments    comments[]
+    users       users       @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+// skipped the mapping, as it seems this is not mandatory
+
+model profile_info {
+    id          Int         @id @default(autoincrement())
+    user_id     Int?
+    metadata    Json?
+    users       users?      @relation(fields: [user_id], references: [id]) // Define the relation here
+} // added last line due to prisma complaints
+
+model users {
+  id              Int         @id @default(autoincrement())
+  email           String      @unique
+  name            String
+  password        String
+  lastname        String
+  comments        comments[]
+  posts           posts[]
+  profile_info    profile_info[]
+  users_to_groups users_to_groups[]
 }
 
-model User {
-  id                 Int       @id @default(autoincrement())
-  email              String    @unique
-  name               String
-  password           String
-  hashedRefreshToken String?
-  role               Role      @default(USER)
-  comments           Comment[]
-  posts              Post[]
-}
+model users_to_groups {
+  group_id       Int
+  user_id        Int
 
-model Category {
-  id    Int     @id @default(autoincrement())
-  slug  String  @unique
-  title String
-  img   String?
-  Posts Post[]
-}
+  group          groups    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user           users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-enum Role {
-  ADMIN
-  EDITOR
-  USER
+  @@id([group_id, user_id])  // Creating a composite primary key
 }
